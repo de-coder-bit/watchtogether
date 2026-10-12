@@ -1,32 +1,57 @@
-import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
-import { Client, IMessage, StompSubscription } from '@stomp/stompjs';
-import SockJS from 'sockjs-client';
-import { useAuth } from './AuthContext';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import { Client, IMessage, StompSubscription } from "@stomp/stompjs";
+import SockJS from "sockjs-client";
+import { useAuth } from "./AuthContext";
 import {
   ChatMessage,
   PlaybackSyncMessage,
   PresenceMessage,
   TypingMessage,
   WebRtcSignalMessage,
-} from '../types';
+} from "../types";
 
 interface WebSocketContextType {
   connected: boolean;
-  subscribeToSync: (roomCode: string, callback: (msg: PlaybackSyncMessage) => void) => () => void;
+  subscribeToSync: (
+    roomCode: string,
+    callback: (msg: PlaybackSyncMessage) => void,
+  ) => () => void;
   sendSync: (roomCode: string, msg: PlaybackSyncMessage) => void;
-  subscribeToWebRtc: (roomCode: string, callback: (msg: WebRtcSignalMessage) => void) => () => void;
+  subscribeToWebRtc: (
+    roomCode: string,
+    callback: (msg: WebRtcSignalMessage) => void,
+  ) => () => void;
   sendWebRtc: (roomCode: string, msg: WebRtcSignalMessage) => void;
-  subscribeToChat: (roomCode: string, callback: (msg: ChatMessage) => void) => () => void;
+  subscribeToChat: (
+    roomCode: string,
+    callback: (msg: ChatMessage) => void,
+  ) => () => void;
   sendChat: (roomCode: string, msg: ChatMessage) => void;
-  subscribeToPresence: (roomCode: string, callback: (msg: PresenceMessage) => void) => () => void;
+  subscribeToPresence: (
+    roomCode: string,
+    callback: (msg: PresenceMessage) => void,
+  ) => () => void;
   sendPresence: (roomCode: string, msg: PresenceMessage) => void;
-  subscribeToTyping: (roomCode: string, callback: (msg: TypingMessage) => void) => () => void;
+  subscribeToTyping: (
+    roomCode: string,
+    callback: (msg: TypingMessage) => void,
+  ) => () => void;
   sendTyping: (roomCode: string, msg: TypingMessage) => void;
 }
 
-const WebSocketContext = createContext<WebSocketContextType | undefined>(undefined);
+const WebSocketContext = createContext<WebSocketContextType | undefined>(
+  undefined,
+);
 
-export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const { token, isAuthenticated } = useAuth();
   const [connected, setConnected] = useState<boolean>(false);
   const stompClientRef = useRef<Client | null>(null);
@@ -42,7 +67,8 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
 
     const client = new Client({
-      webSocketFactory: () => new SockJS('/ws'),
+      webSocketFactory: () =>
+        new SockJS(`${import.meta.env.VITE_BACKEND_URL ?? ""}/ws`),
       connectHeaders: {
         Authorization: `Bearer ${token}`,
       },
@@ -56,10 +82,10 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         setConnected(false);
       },
       onStompError: (frame) => {
-        console.warn('STOMP Error:', frame.headers['message'], frame.body);
+        console.warn("STOMP Error:", frame.headers["message"], frame.body);
       },
       onWebSocketError: (event) => {
-        console.warn('WebSocket connection error:', event);
+        console.warn("WebSocket connection error:", event);
       },
     });
 
@@ -73,7 +99,10 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     };
   }, [isAuthenticated, token]);
 
-  const subscribeToSync = (roomCode: string, callback: (msg: PlaybackSyncMessage) => void) => {
+  const subscribeToSync = (
+    roomCode: string,
+    callback: (msg: PlaybackSyncMessage) => void,
+  ) => {
     if (!stompClientRef.current || !connected) return () => {};
     const sub: StompSubscription = stompClientRef.current.subscribe(
       `/topic/room/${roomCode}/sync`,
@@ -82,9 +111,9 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           const payload: PlaybackSyncMessage = JSON.parse(message.body);
           callback(payload);
         } catch (e) {
-          console.error('Error parsing sync payload', e);
+          console.error("Error parsing sync payload", e);
         }
-      }
+      },
     );
     return () => sub.unsubscribe();
   };
@@ -98,7 +127,10 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   };
 
-  const subscribeToWebRtc = (roomCode: string, callback: (msg: WebRtcSignalMessage) => void) => {
+  const subscribeToWebRtc = (
+    roomCode: string,
+    callback: (msg: WebRtcSignalMessage) => void,
+  ) => {
     if (!stompClientRef.current || !connected) return () => {};
     const sub: StompSubscription = stompClientRef.current.subscribe(
       `/topic/room/${roomCode}/webrtc`,
@@ -107,9 +139,9 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           const payload: WebRtcSignalMessage = JSON.parse(message.body);
           callback(payload);
         } catch (e) {
-          console.error('Error parsing WebRTC signal payload', e);
+          console.error("Error parsing WebRTC signal payload", e);
         }
-      }
+      },
     );
     return () => sub.unsubscribe();
   };
@@ -123,7 +155,10 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   };
 
-  const subscribeToChat = (roomCode: string, callback: (msg: ChatMessage) => void) => {
+  const subscribeToChat = (
+    roomCode: string,
+    callback: (msg: ChatMessage) => void,
+  ) => {
     if (!stompClientRef.current || !connected) return () => {};
     const sub: StompSubscription = stompClientRef.current.subscribe(
       `/topic/room/${roomCode}/chat`,
@@ -132,9 +167,9 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           const payload: ChatMessage = JSON.parse(message.body);
           callback(payload);
         } catch (e) {
-          console.error('Error parsing chat payload', e);
+          console.error("Error parsing chat payload", e);
         }
-      }
+      },
     );
     return () => sub.unsubscribe();
   };
@@ -148,7 +183,10 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   };
 
-  const subscribeToPresence = (roomCode: string, callback: (msg: PresenceMessage) => void) => {
+  const subscribeToPresence = (
+    roomCode: string,
+    callback: (msg: PresenceMessage) => void,
+  ) => {
     if (!stompClientRef.current || !connected) return () => {};
     const sub: StompSubscription = stompClientRef.current.subscribe(
       `/topic/room/${roomCode}/presence`,
@@ -157,9 +195,9 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           const payload: PresenceMessage = JSON.parse(message.body);
           callback(payload);
         } catch (e) {
-          console.error('Error parsing presence payload', e);
+          console.error("Error parsing presence payload", e);
         }
-      }
+      },
     );
     return () => sub.unsubscribe();
   };
@@ -173,7 +211,10 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   };
 
-  const subscribeToTyping = (roomCode: string, callback: (msg: TypingMessage) => void) => {
+  const subscribeToTyping = (
+    roomCode: string,
+    callback: (msg: TypingMessage) => void,
+  ) => {
     if (!stompClientRef.current || !connected) return () => {};
     const sub: StompSubscription = stompClientRef.current.subscribe(
       `/topic/room/${roomCode}/typing`,
@@ -182,9 +223,9 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           const payload: TypingMessage = JSON.parse(message.body);
           callback(payload);
         } catch (e) {
-          console.error('Error parsing typing payload', e);
+          console.error("Error parsing typing payload", e);
         }
-      }
+      },
     );
     return () => sub.unsubscribe();
   };
@@ -222,7 +263,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 export const useWebSocket = () => {
   const context = useContext(WebSocketContext);
   if (!context) {
-    throw new Error('useWebSocket must be used within a WebSocketProvider');
+    throw new Error("useWebSocket must be used within a WebSocketProvider");
   }
   return context;
 };
