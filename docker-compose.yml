@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: watchtogether-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: watchtogether
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  minio:
+    image: minio/minio:latest
+    container_name: watchtogether-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadminpassword
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: watchtogether-backend
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - minio
+    environment:
+      PORT: 8088
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/watchtogether
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgrespassword
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      STORAGE_TYPE: s3
+      AWS_S3_ENDPOINT: http://minio:9000
+      AWS_S3_BUCKET: watchtogether
+      AWS_S3_ACCESS_KEY: minioadmin
+      AWS_S3_SECRET_KEY: minioadminpassword
+      JWT_SECRET: supersecretwatchtogetherjwtkeythatisminimum256bitslongandverysecure12345
+    ports:
+      - "8088:8088"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: watchtogether-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+
+volumes:
+  postgres_data:
+  minio_data:
